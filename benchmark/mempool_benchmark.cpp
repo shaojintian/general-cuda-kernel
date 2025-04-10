@@ -14,52 +14,39 @@ __global__ void matrix_add(float* A, float* B, float* C, int N) {
 int main() {
     int N = 1024;
     size_t size = N * N * sizeof(float);
+    // 测试 CUDA 官方 API
+    {
+        float *d_A, *d_B, *d_C;
+        auto start = std::chrono::high_resolution_clock::now();
 
-    // 分配主机和设备内存
-    float *h_A, *h_B, *h_C;
-    float *d_A, *d_B, *d_C;
-    h_A = (float*)malloc(size);
-    h_B = (float*)malloc(size);
-    h_C = (float*)malloc(size);
-    cudaMalloc(&d_A, size);
-    cudaMalloc(&d_B, size);
-    cudaMalloc(&d_C, size);
+        cudaMalloc(&d_A, size);
+        cudaMalloc(&d_B, size);
+        cudaMalloc(&d_C, size);
 
-    // 初始化数据
-    for (int i = 0; i < N * N; i++) {
-        h_A[i] = 1.0f;
-        h_B[i] = 2.0f;
+        cudaFree(d_A);
+        cudaFree(d_B);
+        cudaFree(d_C);
+
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<float, std::milli> duration = end - start;
+        std::cout << "CUDA API Allocation/Deallocation Time: " << duration.count() << " ms" << std::endl;
     }
 
-    // 复制数据到设备
-    cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_B, h_B, size, cudaMemcpyHostToDevice);
+    // 测试自定义内存池
+    {
+        MemoryPool mempool(size * 3); // 创建一个足够大的内存池
+        auto start = std::chrono::high_resolution_clock::now();
 
-    // 定义线程块和网格
-    dim3 blockDim(16, 16);
-    dim3 gridDim((N + blockDim.x - 1) / blockDim.x, (N + blockDim.y - 1) / blockDim.y);
+        float* d_A = static_cast<float*>(mempool.allocate(size));
+        float* d_B = static_cast<float*>(mempool.allocate(size));
+        float* d_C = static_cast<float*>(mempool.allocate(size));
 
-    // 调用内核
-    matrix_add<<<gridDim, blockDim>>>(d_A, d_B, d_C, N);
-    cudaDeviceSynchronize();
+        mempool.reset(); // 重置内存池
 
-    // 复制结果回主机
-    cudaMemcpy(h_C, d_C, size, cudaMemcpyDeviceToHost);
-
-    // 打印部分结果
-    std::cout << "Result (first 5 elements): ";
-    for (int i = 0; i < 5; i++) {
-        std::cout << h_C[i] << " ";
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<float, std::milli> duration = end - start;
+        std::cout << "MemoryPool Allocation/Deallocation Time: " << duration.count() << " ms" << std::endl;
     }
-    std::cout << std::endl;
-
-    // 释放内存
-    free(h_A);
-    free(h_B);
-    free(h_C);
-    cudaFree(d_A);
-    cudaFree(d_B);
-    cudaFree(d_C);
 
     return 0;
 }
