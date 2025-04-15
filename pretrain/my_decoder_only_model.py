@@ -132,8 +132,11 @@ if __name__ == '__main__':
     model = MyDecoderOnlyModel(config=load_config(args.config))
     #model = [batch_size,seq_len]
     print(model(torch.randint(0, 10000, (1, 10)), torch.ones((1, 1)).bool()).shape)
+    m = model(torch.randint(0, 10000, (1, 10)), torch.ones((1, 1)).bool()).shape
     #[batch_size, seq_len, vocab_size]
-    writer = SummaryWriter()
-    writer.add_graph(model, (torch.randint(0, 10000, (1, 10)), torch.ones((1, 1)).bool()))
+    torchviz.make_dot(model)
+    # writer = SummaryWriter()
+    # writer.add_graph(model, (torch.randint(0, 10000, (1, 10)), torch.ones((1, 1)).bool()))
 
+    # writer.close()
     
